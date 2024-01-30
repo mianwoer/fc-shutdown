@@ -7,8 +7,12 @@ import time
 import os
 import configparser
 
+import yaml
+
+
 def get_logger():
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - [%(process)d] - %(message)s')
+    logging.basicConfig(level=logging.INFO,
+                        format='%(asctime)s - %(name)s - %(levelname)s - [%(process)d] - %(message)s')
     fc_logger = logging.getLogger('fc-shutdown')
 
     # Create a console handler
@@ -23,6 +27,7 @@ def get_logger():
     # fc_logger.addHandler(file_handler)
     return fc_logger
 
+
 def PowerOff(ip, p, u, pw):
     logger_sub = get_logger()
     logger_sub.info("向服务器\"%s\"发送关机指令", ip)
@@ -35,6 +40,14 @@ def PowerOff(ip, p, u, pw):
         ssh.exec_command("shutdown -h now")
     except:
         logger_sub.error("%s服务器ssh连接异常，请检查配置或网络联通情况", ip)
+
+
+def read_yaml_config(file_path):
+    with open(file_path, 'r', encoding='utf-8') as file:
+        config = yaml.safe_load(file)
+    return config
+
+
 # def error_callback_func(err):
 #     logger.info(err)
 """
@@ -52,6 +65,8 @@ def LogTestSSh(str):
     print(str)"""
 
 if __name__ == '__main__':
+    # 新增下面一行代码即可打包多进程
+    multiprocessing.freeze_support()
     """
        使用python直接运行脚本，可以使用  __file__
        如果打包成exe在windows运行，需要使用  os.path.realpath(sys.argv[0])
@@ -61,33 +76,26 @@ if __name__ == '__main__':
     """生成日志对象"""
     logger = get_logger()
 
-    if os.path.exists("./config.ini"):
-        """读取配置文件"""
-        config = configparser.ConfigParser()
-        config.read(os.path.join(project_path, 'config.ini'), encoding='utf-8')
-        remote_ip = config['config']['remote_ip']
-        ssh_port = config['config']['ssh_port']
-        user = config['config']['user']
-        passwd = config['config']['passwd']
-
-        if "," in remote_ip:
-            remote_ip = remote_ip.split(",")
-        print(remote_ip, type(remote_ip))
-        logger.info("""开始向远程服务器 \"%s\" 发送关机命令  """, remote_ip)
-
-        #
-        for ip in remote_ip:
+    # 读取yml配置文件
+    if os.path.exists("./config.yml"):
+        config_file_path = './config.yml'
+        config = read_yaml_config(config_file_path)     #读取为dict类型
+        server_set = config["server_set"]
+        if server_set:
+            #服务器集合不为空
+            logger.info("待关闭服务器ip为：%s",
+                        [i["ip"] for i in server_set])
             pool = multiprocessing.Pool()
             pool_tasks = []
-            # task = pool.apply_async(TestSsh, args=(ip, ssh_port, user, passwd), callback=LogTestSSh, error_callback=error_callback_func)
-            #这里apply_async不需要回调函数，没有数据需要处理;
-            #不需要error回调函数，异常在子进程中已处理好
-            task = pool.apply_async(PowerOff, args=(ip, ssh_port, user, passwd))
-            pool_tasks.append(task)
-        [_.wait() for _ in pool_tasks]
-        pool.close()
-        pool.join()
+            for server in server_set:
+                # 这里apply_async不需要回调函数，进程池没有数据需要返给主进程处理; 不需要error回调函数，异常在子进程中已处理好
+                task = pool.apply_async(PowerOff, args=(server["ip"], server["ssh_port"], server["user"], server["passwd"]))
+                pool_tasks.append(task)
+            [_.wait() for _ in pool_tasks]
+            pool.close()
+            pool.join()
     else:
-        logger.error("未找到配置文件\"config.ini\"")
+        logger.error("未找到配置文件\"config.yml\"")
     end_time = time.time()
     logger.info("发送关机命令完毕，耗时 %.2f秒" % (end_time - start_time))
+    input("请按 Enter 键退出程序...")

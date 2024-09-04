@@ -2,11 +2,11 @@
 #在server_set下依次填写服务器信息，“name”可以随意填写
 kind: Server
 server_set:
-- name:
-  ip: 192.168.137.4
-  ssh_port: 22
-  user: root
-  passwd: iflytek
+#- name:
+#  ip: 192.168.137.4
+#  ssh_port: 22
+#  user: root
+#  passwd: iflytek
 - name: server_3
   ip: 192.168.137.3
   ssh_port: 22

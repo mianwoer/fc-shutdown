@@ -1,3 +1,4 @@
+import ctypes
 import multiprocessing
 
 import paramiko
@@ -64,6 +65,9 @@ def LogTestSSh(str):
     # logger.info(str)
     print(str)"""
 
+def message_box(title, text, style):
+    return ctypes.windll.user32.MessageBoxW(0, text, title, style)
+
 if __name__ == '__main__':
     # 新增下面一行代码即可打包多进程
     multiprocessing.freeze_support()
@@ -71,6 +75,18 @@ if __name__ == '__main__':
        使用python直接运行脚本，可以使用  __file__
        如果打包成exe在windows运行，需要使用  os.path.realpath(sys.argv[0])
        """
+
+    # 弹窗是否需要执行任务
+    title = "提示"
+    text = "确认是否关闭服务器？"
+    style = 4 | 32  # 4表示是Yes/No对话框，32表示有图标
+    result = message_box(title, text, style)
+    if result != 6:  # 6表示用户点击了“Yes”按钮
+        print("用户选择了取消任务")
+        sys.exit()
+    else:
+        print("用户选择了执行任务")
+
     project_path = os.path.dirname(os.path.realpath(sys.argv[0]))
     start_time = time.time()  # 记录开始时间
     """生成日志对象"""
